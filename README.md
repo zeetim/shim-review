@@ -98,7 +98,7 @@ Hint: If you attach all the patches and modifications that are being used to you
 
 You can also point to your custom git servers, where the code is hosted.
 *******************************************************************************
-
+https://github.com/zeetim/shim-review
 
 *******************************************************************************
 ### What patches are being applied and why:

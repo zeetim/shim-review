@@ -1,0 +1,116 @@
+From: Mate Kukri <mate.kukri@canonical.com>
+Date: Fri, 31 May 2024 13:00:37 +0100
+Subject: efi: Disallow fallback to legacy Linux loader when shim says NX is
+ required.
+
+Signed-off-by: Mate Kukri <mate.kukri@canonical.com>
+---
+ grub-core/kern/efi/sb.c      | 28 ++++++++++++++++++++++++++++
+ grub-core/loader/efi/linux.c | 13 ++++++++-----
+ include/grub/efi/api.h       |  2 ++
+ include/grub/efi/sb.h        |  2 ++
+ 4 files changed, 40 insertions(+), 5 deletions(-)
+
+diff --git a/grub-core/kern/efi/sb.c b/grub-core/kern/efi/sb.c
+index 80cfa08..8eb6bce 100644
+--- a/grub-core/kern/efi/sb.c
++++ b/grub-core/kern/efi/sb.c
+@@ -218,3 +218,31 @@ grub_shim_lock_verifier_setup (void)
+   grub_env_set ("shim_lock", "y");
+   grub_env_export ("shim_lock");
+ }
++
++int
++grub_efi_check_nx_required (void)
++{
++  int nx_required = 1; /* assume required, unless we can prove otherwise */
++  grub_efi_status_t status;
++  grub_size_t mok_policy_sz = 0;
++  char *mok_policy = NULL;
++  grub_uint32_t mok_policy_attrs = 0;
++
++  status = grub_efi_get_variable_with_attributes ("MokPolicy",
++						  &(grub_guid_t) GRUB_EFI_SHIM_LOCK_GUID,
++						  &mok_policy_sz,
++						  (void **)&mok_policy,
++						  &mok_policy_attrs);
++  if (status != GRUB_EFI_SUCCESS ||
++      mok_policy_sz != 1 ||
++      mok_policy == NULL ||
++      mok_policy_attrs != GRUB_EFI_VARIABLE_BOOTSERVICE_ACCESS)
++    goto out;
++
++  nx_required = !!(mok_policy[0] & GRUB_MOK_POLICY_NX_REQUIRED);
++
++ out:
++  grub_free (mok_policy);
++
++  return nx_required;
++}
+diff --git a/grub-core/loader/efi/linux.c b/grub-core/loader/efi/linux.c
+index 2b891d6..47ef165 100644
+--- a/grub-core/loader/efi/linux.c
++++ b/grub-core/loader/efi/linux.c
+@@ -29,6 +29,7 @@
+ #include <grub/efi/fdtload.h>
+ #include <grub/efi/memory.h>
+ #include <grub/efi/pe32.h>
++#include <grub/efi/sb.h>
+ #include <grub/i18n.h>
+ #include <grub/lib/cmdline.h>
+ #include <grub/verify.h>
+@@ -473,21 +474,23 @@ grub_cmd_linux (grub_command_t cmd __attribute__ ((unused)),
+ 
+   kernel_size = grub_file_size (file);
+ 
+-  if (grub_arch_efi_linux_load_image_header (file, &lh) != GRUB_ERR_NONE)
+ #if !defined(__i386__) && !defined(__x86_64__)
++  if (grub_arch_efi_linux_load_image_header (file, &lh) != GRUB_ERR_NONE)
+     goto fail;
+ #else
+-    goto fallback;
+-
+-  if (!initrd_use_loadfile2)
++  if (grub_arch_efi_linux_load_image_header (file, &lh) != GRUB_ERR_NONE ||
++      !initrd_use_loadfile2)
+     {
++      /* We cannot use the legacy loader when NX is required */
++      if (grub_efi_check_nx_required())
++        goto fail;
++
+       /*
+        * This is a EFI stub image but it is too old to implement the LoadFile2
+        * based initrd loading scheme, and Linux/x86 does not support the DT
+        * based method either. So fall back to the x86-specific loader that
+        * enters Linux in EFI mode but without going through its EFI stub.
+        */
+-fallback:
+       grub_file_close (file);
+       return grub_cmd_linux_x86_legacy (cmd, argc, argv);
+     }
+diff --git a/include/grub/efi/api.h b/include/grub/efi/api.h
+index 699bccf..343f968 100644
+--- a/include/grub/efi/api.h
++++ b/include/grub/efi/api.h
+@@ -2023,6 +2023,8 @@ struct grub_efi_dt_fixup
+ };
+ typedef struct grub_efi_dt_fixup grub_efi_dt_fixup_t;
+ 
++#define GRUB_MOK_POLICY_NX_REQUIRED	0x1
++
+ struct grub_efi_shim_lock_protocol
+ {
+   /*
+diff --git a/include/grub/efi/sb.h b/include/grub/efi/sb.h
+index 30c4335..83ba311 100644
+--- a/include/grub/efi/sb.h
++++ b/include/grub/efi/sb.h
+@@ -33,6 +33,8 @@ EXPORT_FUNC (grub_efi_get_secureboot) (void);
+ 
+ extern void
+ grub_shim_lock_verifier_setup (void);
++extern int
++EXPORT_FUNC (grub_efi_check_nx_required) (void);
+ #else
+ static inline grub_uint8_t
+ grub_efi_get_secureboot (void)

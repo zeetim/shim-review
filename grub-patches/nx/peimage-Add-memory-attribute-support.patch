@@ -1,0 +1,151 @@
+From: Mate Kukri <mate.kukri@canonical.com>
+Date: Fri, 14 Jun 2024 11:20:05 +0100
+Subject: peimage: Add memory attribute support
+
+---
+ grub-core/loader/efi/peimage.c | 87 ++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 84 insertions(+), 3 deletions(-)
+
+diff --git a/grub-core/loader/efi/peimage.c b/grub-core/loader/efi/peimage.c
+index b04fc61..befddd7 100644
+--- a/grub-core/loader/efi/peimage.c
++++ b/grub-core/loader/efi/peimage.c
+@@ -8,6 +8,7 @@
+ #include <grub/efi/efi.h>
+ #include <grub/efi/pe32.h>
+ #include <grub/efi/peimage.h>
++#include <grub/efi/sb.h>
+ #include <grub/env.h>
+ #include <grub/misc.h>
+ #include <grub/mm.h>
+@@ -22,6 +23,7 @@ struct image_info
+   void *data;
+   grub_efi_uint32_t data_size;
+   grub_efi_device_path_t *file_path;
++  grub_efi_uint8_t nx_compat;
+   grub_efi_uint16_t machine;
+   grub_efi_uint16_t num_sections;
+   struct grub_pe32_section_table *section;
+@@ -147,6 +149,8 @@ check_pe_header (struct image_info *info)
+ 	  grub_error (GRUB_ERR_BAD_OS, "expected EFI application");
+ 	  return GRUB_EFI_LOAD_ERROR;
+ 	}
++      info->nx_compat =
++	(pe32_header->dll_characteristics & GRUB_PE32_NX_COMPAT) != 0;
+       info->section_alignment = pe32_header->section_alignment;
+       info->image_base = pe32_header->image_base;
+       info->image_size = pe32_header->image_size;
+@@ -173,6 +177,8 @@ check_pe_header (struct image_info *info)
+ 	  grub_error (GRUB_ERR_BAD_OS, "expected EFI application");
+ 	  return GRUB_EFI_LOAD_ERROR;
+ 	}
++      info->nx_compat =
++	(pe64_header->dll_characteristics & GRUB_PE32_NX_COMPAT) != 0;
+       info->section_alignment = pe64_header->section_alignment;
+       info->image_base = pe64_header->image_base;
+       info->image_size = pe64_header->image_size;
+@@ -198,6 +204,19 @@ check_pe_header (struct image_info *info)
+       return GRUB_EFI_LOAD_ERROR;
+     }
+ 
++  /* NOTE: shim_lock->verify() also enforces this, so this
++   * check won't be hit when used with shim */
++  if (grub_efi_check_nx_required() && !info->nx_compat)
++    {
++      grub_dprintf ("peimage", "NX policy violation\n");
++      return GRUB_EFI_SECURITY_VIOLATION;
++    }
++  if (info->nx_compat && info->section_alignment < GRUB_EFI_PAGE_SIZE)
++    {
++      grub_dprintf ("peimage", "NX compatible image with sub-page section alignment\n");
++      return GRUB_EFI_LOAD_ERROR;
++    }
++
+   if ((unsigned long)info->section
+ 	  + info->num_sections * sizeof (*info->section)
+       > (unsigned long)info->data + info->data_size)
+@@ -223,6 +242,9 @@ load_sections (struct image_info *info)
+ {
+   struct grub_pe32_section_table *section;
+   unsigned long align_mask = 0xfff;
++  grub_addr_t section_addr;
++  grub_err_t err;
++  grub_uint64_t section_set_mem_attr, section_clear_mem_attr;
+ 
+   /* Section alignment must be a power of two */
+   if (info->section_alignment & (info->section_alignment - 1))
+@@ -267,12 +289,71 @@ load_sections (struct image_info *info)
+ 	  return GRUB_EFI_LOAD_ERROR;
+ 	}
+ 
+-      grub_memset ((void *)((unsigned long)info->image_addr + section->virtual_address),
+-		   0, section->virtual_size);
++      if (section->raw_data_size)
++	{
++	  if (section->raw_data_offset < info->header_size)
++	    {
++	      grub_dprintf ("peimage", "section data inside header\n");
++	      return GRUB_EFI_LOAD_ERROR;
++	    }
++	  if (section->raw_data_offset + section->raw_data_size > info->data_size)
++	    {
++	      grub_dprintf ("peimage", "section data outside file\n");
++	      return GRUB_EFI_LOAD_ERROR;
++	    }
++	  if (section->raw_data_size > section->virtual_size)
++	    {
++	      grub_dprintf ("peimage", "section data larger than virtual size\n");
++	      return GRUB_EFI_LOAD_ERROR;
++	    }
++	}
++
++      section_addr = (grub_addr_t)info->image_addr + section->virtual_address;
++
++      grub_memset ((void *) section_addr, 0, section->virtual_size);
+       grub_memcpy (
+-	  (void *)((unsigned long)info->image_addr + section->virtual_address),
++	  (void *) section_addr,
+ 	  (void *)((unsigned long)info->data + section->raw_data_offset),
+ 	  section->raw_data_size);
++
++      if (!info->nx_compat)
++	continue;
++
++      if (section_addr & (GRUB_EFI_PAGE_SIZE - 1))
++        {
++          grub_dprintf ("peimage",  "NX compatible image with badly aligned section\n");
++	  return GRUB_EFI_LOAD_ERROR;
++        }
++
++      if ((section->characteristics & GRUB_PE32_SCN_MEM_WRITE) && (section->characteristics & GRUB_PE32_SCN_MEM_EXECUTE))
++	{
++	  grub_dprintf ("peimage",  "NX compatible image with W|X section\n");
++	  return GRUB_EFI_LOAD_ERROR;
++	}
++
++      section_set_mem_attr = 0;
++      section_clear_mem_attr = 0;
++      if (section->characteristics & GRUB_PE32_SCN_MEM_READ)
++	section_set_mem_attr |= GRUB_MEM_ATTR_R;
++      else
++	section_clear_mem_attr |= GRUB_MEM_ATTR_R;
++      if (section->characteristics & GRUB_PE32_SCN_MEM_WRITE)
++	section_set_mem_attr |= GRUB_MEM_ATTR_W;
++      else
++	section_clear_mem_attr |= GRUB_MEM_ATTR_W;
++      if (section->characteristics & GRUB_PE32_SCN_MEM_EXECUTE)
++	section_set_mem_attr |= GRUB_MEM_ATTR_X;
++      else
++	section_clear_mem_attr |= GRUB_MEM_ATTR_X;
++
++      err = grub_update_mem_attrs (section_addr,
++				   GRUB_EFI_BYTES_TO_PAGES(section->virtual_size) * GRUB_EFI_PAGE_SIZE,
++				   section_set_mem_attr, section_clear_mem_attr);
++      if (err != GRUB_ERR_NONE)
++	{
++	  grub_dprintf ("peimage",  "Failed to set PE section memory attributes\n");
++	  return GRUB_EFI_LOAD_ERROR;
++	}
+     }
+ 
+   info->entry_point = (void *)((unsigned long)info->entry_point

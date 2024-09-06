@@ -1,0 +1,252 @@
+From: Mate Kukri <mate.kukri@canonical.com>
+Date: Tue, 22 Mar 2022 10:56:21 -0400
+Subject: nx: add memory attribute get/set API
+
+For NX, we need to set the page access permission attributes for write
+and execute permissions.
+
+This patch adds two new primitives, grub_set_mem_attrs() and
+grub_clear_mem_attrs(), and associated constant definitions, to be used
+for that purpose.
+
+For most platforms, it adds a dummy implementation that returns
+GRUB_ERR_NONE.
+
+On EFI platforms, it implements the primitives using the EFI
+Memory Attribute Protocol (defined in UEFI 2.10 specification).
+
+Original-Author: Peter Jones <pjones@redhat.com>
+Signed-off-by: Mate Kukri <mate.kukri@canonical.com>
+---
+ grub-core/kern/efi/mm.c | 127 ++++++++++++++++++++++++++++++++++++++++++++++++
+ include/grub/efi/api.h  |  25 ++++++++++
+ include/grub/mm.h       |  33 +++++++++++++
+ 3 files changed, 185 insertions(+)
+
+diff --git a/grub-core/kern/efi/mm.c b/grub-core/kern/efi/mm.c
+index d45d0e2..790094c 100644
+--- a/grub-core/kern/efi/mm.c
++++ b/grub-core/kern/efi/mm.c
+@@ -687,3 +687,130 @@ grub_efi_get_ram_base(grub_addr_t *base_addr)
+   return GRUB_ERR_NONE;
+ }
+ #endif
++
++static inline grub_uint64_t
++grub_mem_attrs_to_uefi_mem_attrs (grub_uint64_t attrs)
++{
++  grub_uint64_t ret = GRUB_EFI_MEMORY_RP |
++		      GRUB_EFI_MEMORY_RO |
++		      GRUB_EFI_MEMORY_XP;
++
++  if (attrs & GRUB_MEM_ATTR_R)
++    ret &= ~GRUB_EFI_MEMORY_RP;
++
++  if (attrs & GRUB_MEM_ATTR_W)
++    ret &= ~GRUB_EFI_MEMORY_RO;
++
++  if (attrs & GRUB_MEM_ATTR_X)
++    ret &= ~GRUB_EFI_MEMORY_XP;
++
++  return ret;
++}
++
++static inline grub_uint64_t
++uefi_mem_attrs_to_grub_mem_attrs (grub_uint64_t attrs)
++{
++  grub_uint64_t ret = GRUB_MEM_ATTR_R |
++		      GRUB_MEM_ATTR_W |
++		      GRUB_MEM_ATTR_X;
++
++  if (attrs & GRUB_EFI_MEMORY_RP)
++    ret &= ~GRUB_MEM_ATTR_R;
++
++  if (attrs & GRUB_EFI_MEMORY_RO)
++    ret &= ~GRUB_MEM_ATTR_W;
++
++  if (attrs & GRUB_EFI_MEMORY_XP)
++    ret &= ~GRUB_MEM_ATTR_X;
++
++  return ret;
++}
++
++grub_err_t
++grub_get_mem_attrs (grub_addr_t addr, grub_size_t size, grub_uint64_t *attrs)
++{
++  grub_efi_memory_attribute_protocol_t *proto;
++  grub_efi_physical_address_t physaddr = addr;
++  grub_guid_t protocol_guid = GRUB_EFI_MEMORY_ATTRIBUTE_PROTOCOL_GUID;
++  grub_efi_status_t efi_status;
++
++  if (physaddr & 0xfff || size & 0xfff || size == 0 || attrs == NULL)
++    {
++      return grub_error (GRUB_ERR_BAD_ARGUMENT,
++			 N_("grub_get_mem_attrs() called with invalid arguments"));
++    }
++
++  proto = grub_efi_locate_protocol (&protocol_guid, 0);
++  if (!proto)
++    {
++      /* No protocol -> do nothing, all memory is RWX in boot services */
++      *attrs = GRUB_MEM_ATTR_R | GRUB_MEM_ATTR_W | GRUB_MEM_ATTR_X;
++      return GRUB_ERR_NONE;
++    }
++
++  efi_status = proto->get_memory_attributes(proto, physaddr, size, attrs);
++  if (efi_status != GRUB_EFI_SUCCESS)
++    {
++      return grub_error (GRUB_ERR_BAD_ARGUMENT,
++			 N_("grub_get_mem_attrs() called with invalid arguments"));
++    }
++
++  *attrs = uefi_mem_attrs_to_grub_mem_attrs (*attrs);
++
++  grub_dprintf ("nx", "get 0x%"PRIxGRUB_ADDR"-0x%"PRIxGRUB_ADDR":%c%c%c\n",
++		addr, addr + size - 1,
++		(*attrs & GRUB_MEM_ATTR_R) ? 'r' : '-',
++		(*attrs & GRUB_MEM_ATTR_W) ? 'w' : '-',
++		(*attrs & GRUB_MEM_ATTR_X) ? 'x' : '-');
++
++  return GRUB_ERR_NONE;
++}
++
++grub_err_t
++grub_update_mem_attrs (grub_addr_t addr, grub_size_t size,
++		       grub_uint64_t set_attrs, grub_uint64_t clear_attrs)
++{
++  grub_efi_memory_attribute_protocol_t *proto;
++  grub_efi_physical_address_t physaddr = addr;
++  grub_guid_t protocol_guid = GRUB_EFI_MEMORY_ATTRIBUTE_PROTOCOL_GUID;
++  grub_efi_status_t efi_status = GRUB_EFI_SUCCESS;
++  grub_uint64_t uefi_set_attrs, uefi_clear_attrs;
++
++
++  if (physaddr & 0xfff || size & 0xfff || size == 0)
++    {
++      return grub_error (GRUB_ERR_BAD_ARGUMENT,
++			 N_("grub_update_mem_attrs() called with invalid arguments"));
++    }
++
++  proto = grub_efi_locate_protocol (&protocol_guid, 0);
++  if (!proto)
++    {
++      /* No protocol -> do nothing, all memory is RWX in boot services */
++      return GRUB_ERR_NONE;
++    }
++
++  uefi_set_attrs = grub_mem_attrs_to_uefi_mem_attrs (set_attrs);
++  uefi_clear_attrs = grub_mem_attrs_to_uefi_mem_attrs (clear_attrs);
++  if (uefi_set_attrs)
++    efi_status = proto->set_memory_attributes(proto, physaddr, size, uefi_set_attrs);
++  if (efi_status == GRUB_EFI_SUCCESS && uefi_clear_attrs)
++    efi_status = proto->clear_memory_attributes(proto, physaddr, size, uefi_clear_attrs);
++
++  if (efi_status != GRUB_EFI_SUCCESS)
++    {
++      return grub_error (GRUB_ERR_BAD_ARGUMENT,
++			 N_("grub_update_mem_attrs() called with invalid arguments"));
++    }
++
++  grub_dprintf ("nx", "set +%s%s%s -%s%s%s on 0x%"PRIxGRUB_ADDR"-0x%"PRIxGRUB_ADDR"\n",
++		(set_attrs & GRUB_MEM_ATTR_R) ? "r" : "",
++		(set_attrs & GRUB_MEM_ATTR_W) ? "w" : "",
++		(set_attrs & GRUB_MEM_ATTR_X) ? "x" : "",
++		(clear_attrs & GRUB_MEM_ATTR_R) ? "r" : "",
++		(clear_attrs & GRUB_MEM_ATTR_W) ? "w" : "",
++		(clear_attrs & GRUB_MEM_ATTR_X) ? "x" : "",
++		addr, addr + size - 1);
++
++  return GRUB_ERR_NONE;
++}
+diff --git a/include/grub/efi/api.h b/include/grub/efi/api.h
+index a89bf3d..699bccf 100644
+--- a/include/grub/efi/api.h
++++ b/include/grub/efi/api.h
+@@ -393,6 +393,11 @@
+     {0xb6, 0xc7, 0x44, 0x0b, 0x29, 0xbb, 0x8c, 0x4f } \
+   }
+ 
++#define GRUB_EFI_MEMORY_ATTRIBUTE_PROTOCOL_GUID \
++  { 0xf4560cf6, 0x40ec, 0x4b4a, \
++    { 0xa1, 0x92, 0xbf, 0x1d, 0x57, 0xd0, 0xb1, 0x89 } \
++  }
++
+ struct grub_efi_sal_system_table
+ {
+   grub_uint32_t signature;
+@@ -2214,4 +2219,24 @@ struct initrd_media_device_path {
+ } GRUB_PACKED;
+ typedef struct initrd_media_device_path initrd_media_device_path_t;
+ 
++struct grub_efi_memory_attribute_protocol
++{
++  grub_efi_status_t (__grub_efi_api *get_memory_attributes) (
++			    struct grub_efi_memory_attribute_protocol *this,
++			    grub_efi_physical_address_t base_address,
++			    grub_efi_uint64_t length,
++			    grub_efi_uint64_t *attributes);
++  grub_efi_status_t (__grub_efi_api *set_memory_attributes) (
++			    struct grub_efi_memory_attribute_protocol *this,
++			    grub_efi_physical_address_t base_address,
++			    grub_efi_uint64_t length,
++			    grub_efi_uint64_t attributes);
++  grub_efi_status_t (__grub_efi_api *clear_memory_attributes) (
++			    struct grub_efi_memory_attribute_protocol *this,
++			    grub_efi_physical_address_t base_address,
++			    grub_efi_uint64_t length,
++			    grub_efi_uint64_t attributes);
++};
++typedef struct grub_efi_memory_attribute_protocol grub_efi_memory_attribute_protocol_t;
++
+ #endif /* ! GRUB_EFI_API_HEADER */
+diff --git a/include/grub/mm.h b/include/grub/mm.h
+index f3bf87f..dcccfe3 100644
+--- a/include/grub/mm.h
++++ b/include/grub/mm.h
+@@ -23,6 +23,7 @@
+ #include <grub/err.h>
+ #include <grub/types.h>
+ #include <grub/symbol.h>
++#include <grub/err.h>
+ #include <config.h>
+ 
+ #ifndef NULL
+@@ -56,6 +57,38 @@ void *EXPORT_FUNC(grub_realloc) (void *ptr, grub_size_t size);
+ void *EXPORT_FUNC(grub_memalign) (grub_size_t align, grub_size_t size);
+ #endif
+ 
++#define GRUB_MEM_ATTR_R	0x0000000000000004LLU
++#define GRUB_MEM_ATTR_W	0x0000000000000002LLU
++#define GRUB_MEM_ATTR_X	0x0000000000000001LLU
++
++#ifdef GRUB_MACHINE_EFI
++grub_err_t EXPORT_FUNC(grub_get_mem_attrs) (grub_addr_t addr,
++					    grub_size_t size,
++					    grub_uint64_t *attrs);
++grub_err_t EXPORT_FUNC(grub_update_mem_attrs) (grub_addr_t addr,
++					       grub_size_t size,
++					       grub_uint64_t set_attrs,
++					       grub_uint64_t clear_attrs);
++#else /* !GRUB_MACHINE_EFI */
++static inline grub_err_t
++grub_get_mem_attrs (grub_addr_t addr __attribute__((__unused__)),
++		    grub_size_t size __attribute__((__unused__)),
++		    grub_uint64_t *attrs __attribute__((__unused__)))
++{
++  *attrs = GRUB_MEM_ATTR_R | GRUB_MEM_ATTR_W | GRUB_MEM_ATTR_X;
++  return GRUB_ERR_NONE;
++}
++
++static inline grub_err_t
++grub_update_mem_attrs (grub_addr_t addr __attribute__((__unused__)),
++		       grub_size_t size __attribute__((__unused__)),
++		       grub_uint64_t set_attrs __attribute__((__unused__)),
++		       grub_uint64_t clear_attrs __attribute__((__unused__)))
++{
++  return GRUB_ERR_NONE;
++}
++#endif /* GRUB_MACHINE_EFI */
++
+ void grub_mm_check_real (const char *file, int line);
+ #define grub_mm_check() grub_mm_check_real (GRUB_FILE, __LINE__);
+ 

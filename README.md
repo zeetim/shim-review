@@ -272,8 +272,8 @@ Hint: run `objcopy --only-section .sbat -O binary YOUR_EFI_BINARY /dev/stdout` t
 *******************************************************************************
 ```csv
 sbat,1,SBAT Version,sbat,1,https://github.com/rhboot/shim/blob/main/SBAT.md
-grub,4,Free Software Foundation,grub,2.06,https://www.gnu.org/software/grub/
-grub.zeetim,1,Zeetim,grub,2.06,mail:contact@zeetim.com
+grub,4,Free Software Foundation,grub,2.12,https://www.gnu.org/software/grub/
+grub.zeetim,1,Zeetim,grub,2.12,mail:contact@zeetim.com
 ```
 
 *******************************************************************************

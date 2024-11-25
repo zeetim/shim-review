@@ -318,7 +318,7 @@ No
 ### How do the launched components prevent execution of unauthenticated code?
 Summarize in one or two sentences, how your secure bootchain works on higher level.
 *******************************************************************************
-shim verifies signature of grub, grub verifies signature of kernel. Grub also use a builtin GPG key that ensures that all grub configs and initrd cannot be modified. Kernel is compiled with CONFIG_LOCK_DOWN_KERNEL_FORCE_INTEGRITY, CONFIG_MODULE_SIG_FORCE, CONFIG_INTEGRITY_PLATFORM_KEYRING and CONFIG_INTEGRITY_MACHINE_KEYRING. Kernel modules are signed using the same vendor keypair used inside shim image.
+shim verifies signature of grub, grub verifies signature of kernel. Grub also use a builtin GPG key that ensures that all grub configs and initrd cannot be modified. Kernel is compiled with CONFIG_LOCK_DOWN_KERNEL_FORCE_INTEGRITY, CONFIG_MODULE_SIG_FORCE, CONFIG_INTEGRITY_PLATFORM_KEYRING and CONFIG_INTEGRITY_MACHINE_KEYRING. Kernel modules are signed using ephemeral key.
 
 *******************************************************************************
 ### Does your shim load any loaders that support loading unsigned kernels (e.g. certain GRUB2 configurations)?

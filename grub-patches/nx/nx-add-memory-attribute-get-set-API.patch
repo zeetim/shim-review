@@ -162,7 +162,7 @@ diff --git a/include/grub/efi/api.h b/include/grub/efi/api.h
 index a89bf3d..699bccf 100644
 --- a/include/grub/efi/api.h
 +++ b/include/grub/efi/api.h
-@@ -393,6 +393,11 @@
+@@ -388,6 +388,11 @@
      {0xb6, 0xc7, 0x44, 0x0b, 0x29, 0xbb, 0x8c, 0x4f } \
    }
  
@@ -174,7 +174,7 @@ index a89bf3d..699bccf 100644
  struct grub_efi_sal_system_table
  {
    grub_uint32_t signature;
-@@ -2214,4 +2219,24 @@ struct initrd_media_device_path {
+@@ -2197,4 +2202,24 @@ struct initrd_media_device_path {
  } GRUB_PACKED;
  typedef struct initrd_media_device_path initrd_media_device_path_t;
  

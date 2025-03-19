@@ -3,11 +3,11 @@ Date: Fri, 14 Jun 2024 11:20:05 +0100
 Subject: peimage: Add memory attribute support
 
 ---
- grub-core/loader/efi/peimage.c | 87 ++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 84 insertions(+), 3 deletions(-)
+ grub-core/loader/efi/peimage.c | 80 ++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 77 insertions(+), 3 deletions(-)
 
 diff --git a/grub-core/loader/efi/peimage.c b/grub-core/loader/efi/peimage.c
-index b04fc61..befddd7 100644
+index b04fc61..173605b 100644
 --- a/grub-core/loader/efi/peimage.c
 +++ b/grub-core/loader/efi/peimage.c
 @@ -8,6 +8,7 @@
@@ -44,17 +44,10 @@ index b04fc61..befddd7 100644
        info->section_alignment = pe64_header->section_alignment;
        info->image_base = pe64_header->image_base;
        info->image_size = pe64_header->image_size;
-@@ -198,6 +204,19 @@ check_pe_header (struct image_info *info)
+@@ -198,6 +204,12 @@ check_pe_header (struct image_info *info)
        return GRUB_EFI_LOAD_ERROR;
      }
  
-+  /* NOTE: shim_lock->verify() also enforces this, so this
-+   * check won't be hit when used with shim */
-+  if (grub_efi_check_nx_required() && !info->nx_compat)
-+    {
-+      grub_dprintf ("peimage", "NX policy violation\n");
-+      return GRUB_EFI_SECURITY_VIOLATION;
-+    }
 +  if (info->nx_compat && info->section_alignment < GRUB_EFI_PAGE_SIZE)
 +    {
 +      grub_dprintf ("peimage", "NX compatible image with sub-page section alignment\n");
@@ -64,7 +57,7 @@ index b04fc61..befddd7 100644
    if ((unsigned long)info->section
  	  + info->num_sections * sizeof (*info->section)
        > (unsigned long)info->data + info->data_size)
-@@ -223,6 +242,9 @@ load_sections (struct image_info *info)
+@@ -223,6 +235,9 @@ load_sections (struct image_info *info)
  {
    struct grub_pe32_section_table *section;
    unsigned long align_mask = 0xfff;
@@ -74,7 +67,7 @@ index b04fc61..befddd7 100644
  
    /* Section alignment must be a power of two */
    if (info->section_alignment & (info->section_alignment - 1))
-@@ -267,12 +289,71 @@ load_sections (struct image_info *info)
+@@ -267,12 +282,71 @@ load_sections (struct image_info *info)
  	  return GRUB_EFI_LOAD_ERROR;
  	}
  

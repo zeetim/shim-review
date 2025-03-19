@@ -2,8 +2,7 @@
 FROM debian:bookworm
 
 ARG VENDOR_CERT="zeetim-uefi-ca.der"
-ARG SHIM_SBAT="shim-sbat.csv"
-ENV SHIM_VERSION=15.8
+ENV SHIM_VERSION=16.0
 ENV BUILD_DIR="/build"
 ENV PATCHES_DIR="shim-patches"
 ENV DEBIAN_FRONTEND=noninteractive
@@ -22,16 +21,16 @@ WORKDIR ${BUILD_DIR}/shim-${SHIM_VERSION}
 
 ADD ${VENDOR_CERT} .
 COPY ${PATCHES_DIR}/ patches/
-RUN mkdir -p data
-ADD ${SHIM_SBAT} data/sbat.csv
+
+RUN echo shim.zeetim,1,Zeetim,shim,${SHIM_VERSION},mail:contact@zeetim.com >> data/sbat.csv
 RUN cat data/sbat.csv
 
 RUN quilt push -a
 
-RUN make VENDOR_CERT_FILE=${VENDOR_CERT}
+RUN make VENDOR_CERT_FILE=${VENDOR_CERT} DISABLE_FALLBACK=1 DISABLE_MOK=1 POST_PROCESS_PE_FLAGS=-n MOK_POLICY=MOK_POLICY_REQUIRE_NX
 
 RUN mkdir -p ${OUTPUT_DIR}
-RUN cp shimx64.nx.efi ${OUTPUT_DIR}/shimx64.efi
+RUN cp shimx64.efi ${OUTPUT_DIR}/shimx64.efi
 WORKDIR ${OUTPUT_DIR}
 
 RUN objcopy --only-section .sbat -O binary shimx64.efi /dev/stdout

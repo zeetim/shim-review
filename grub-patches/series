@@ -1,4 +1,6 @@
+extra_deps_lst.patch
 olpc-prefix-hack.patch
+install-efi-adjust-distributor.patch
 network/net-http-check-result-of-grub_netbuff_put-in-http_receive.patch
 network/bootp-new-net_bootp6-command.patch
 network/efinet-add-structures-for-PXE-messages.patch
@@ -20,14 +22,10 @@ network/rhboot-http-message-field-size.patch
 secure-boot/revert-efi-fallback-to-legacy.patch
 secure-boot/loader-framework.patch
 secure-boot/efi-use-peimage-shim.patch
-fdt-add-debug-output-to-devicetree-command.patch
-fdt-device-tree-fixup-protocol.patch
-extra_deps_lst.patch
 nx/modules-strip-.llvm_addrsig-sections-and-similar.patch
 nx/modules-Don-t-allocate-space-for-non-allocable-sections.patch
 nx/modules-load-module-sections-at-page-aligned-addresses.patch
 nx/nx-add-memory-attribute-get-set-API.patch
 nx/nx-set-page-permissions-for-loaded-modules.patch
 nx/nx-set-the-nx-compatible-flag-in-EFI-grub-images.patch
-nx/efi-Disallow-fallback-to-legacy-Linux-loader-when-shim-sa.patch
 nx/peimage-Add-memory-attribute-support.patch

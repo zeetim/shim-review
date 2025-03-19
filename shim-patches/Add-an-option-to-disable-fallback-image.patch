@@ -1,0 +1,83 @@
+From 727786d0f5ae8a4f0b761f641c701c1d5698d97f Mon Sep 17 00:00:00 2001
+From: zeetim <support@zeetim.com>
+Date: Fri, 7 Mar 2025 16:38:32 +0100
+Subject: [PATCH] Add an option to disable fallback image
+
+It allows to use shim without fallback mechanism.
+BOOT.CSV can cause security issues because user can manipulate its content.
+So get rid of fallback image is one solution.
+
+Signed-off-by: zeetim <support@zeetim.com>
+---
+ Makefile | 12 +++++++++---
+ shim.c   |  6 ++++++
+ 2 files changed, 15 insertions(+), 3 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 4412a5e..76e4fc3 100644
+--- a/Makefile
++++ b/Makefile
+@@ -25,7 +25,7 @@ include $(TOPDIR)/include/scan-build.mk
+ include $(TOPDIR)/include/fanalyzer.mk
+ 
+ TARGETS	= $(SHIMNAME)
+-TARGETS += $(SHIMNAME).debug $(MMNAME).debug $(FBNAME).debug
++TARGETS += $(SHIMNAME).debug $(MMNAME).debug $(if $(DISABLE_FALLBACK),,$(FBNAME).debug)
+ ifneq ($(origin ENABLE_SHIM_HASH),undefined)
+ TARGETS += $(SHIMHASHNAME)
+ endif
+@@ -33,11 +33,17 @@ ifneq ($(origin ENABLE_SHIM_DEVEL),undefined)
+ CFLAGS += -DENABLE_SHIM_DEVEL
+ endif
+ ifneq ($(origin ENABLE_SHIM_CERT),undefined)
+-TARGETS	+= $(MMNAME).signed $(FBNAME).signed
++TARGETS	+= $(MMNAME).signed $(if $(DISABLE_FALLBACK),,$(FBNAME).signed)
+ CFLAGS += -DENABLE_SHIM_CERT
+ else
+-TARGETS += $(MMNAME) $(FBNAME)
++TARGETS += $(MMNAME) $(if $(DISABLE_FALLBACK),,$(FBNAME))
+ endif
++
++ifneq ($(origin DISABLE_FALLBACK),undefined)
++$(warning Building shim without fallback image support)
++CFLAGS += -DDISABLE_FALLBACK
++endif
++
+ OBJS	= shim.o globals.o memattrs.o mok.o netboot.o cert.o dp.o loader-proto.o tpm.o version.o errlog.o sbat.o sbat_data.o sbat_var.o pe.o pe-relocate.o httpboot.o csv.o load-options.o utils.o
+ KEYS	= shim_cert.h ocsp.* ca.* shim.crt shim.csr shim.p12 shim.pem shim.key shim.cer
+ ORIG_SOURCES	= shim.c globals.c memattrs.c mok.c netboot.c dp.c loader-proto.c tpm.c errlog.c sbat.c pe.c pe-relocate.c httpboot.c shim.h version.h $(wildcard include/*.h) cert.S sbat_var.S
+diff --git a/shim.c b/shim.c
+index 8b933d7..fae0421 100644
+--- a/shim.c
++++ b/shim.c
+@@ -778,6 +778,7 @@ verify_buffer (char *data, int datasize,
+ 	return verify_buffer_sbat(data, datasize, context);
+ }
+ 
++#ifndef DISABLE_FALLBACK
+ static int
+ should_use_fallback(EFI_HANDLE image_handle)
+ {
+@@ -834,6 +835,7 @@ error:
+ 
+ 	return ret;
+ }
++#endif
+ /*
+  * Open the second stage bootloader and read it into a buffer
+  */
+@@ -1210,7 +1212,11 @@ done:
+ EFI_STATUS init_grub(EFI_HANDLE image_handle)
+ {
+ 	EFI_STATUS efi_status;
++#ifndef DISABLE_FALLBACK
+ 	int use_fb = should_use_fallback(image_handle);
++#else
++	int use_fb = 0;
++#endif
+ 
+ 	efi_status = start_image(image_handle, use_fb ? FALLBACK :second_stage);
+ 	if (efi_status == EFI_SECURITY_VIOLATION ||
+-- 
+2.39.5
+

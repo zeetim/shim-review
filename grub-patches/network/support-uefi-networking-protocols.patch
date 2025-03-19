@@ -44,7 +44,7 @@ diff --git a/grub-core/Makefile.core.def b/grub-core/Makefile.core.def
 index 15be5db..044e53c 100644
 --- a/grub-core/Makefile.core.def
 +++ b/grub-core/Makefile.core.def
-@@ -2359,6 +2359,12 @@ module = {
+@@ -2351,6 +2351,12 @@ module = {
    common = net/ethernet.c;
    common = net/arp.c;
    common = net/netbuff.c;

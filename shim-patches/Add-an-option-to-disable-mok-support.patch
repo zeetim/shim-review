@@ -1,0 +1,128 @@
+From 969153eab58387c7bbe8e65e7ec9d5e152e8fd71 Mon Sep 17 00:00:00 2001
+From: zeetim <support@zeetim.com>
+Date: Fri, 7 Mar 2025 16:54:49 +0100
+Subject: [PATCH] Add an option to disable mok support
+
+This option allows to not build the mokmanager and fully remove mok variables support from shim.
+This option is useful if you only want to trust vendort certificate or db certificate but not mok certificates.
+
+Signed-off-by: zeetim <support@zeetim.com>
+---
+ Makefile | 15 ++++++++++-----
+ shim.c   | 14 ++++++++++----
+ 2 files changed, 20 insertions(+), 9 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 76e4fc3..daf8114 100644
+--- a/Makefile
++++ b/Makefile
+@@ -25,7 +25,7 @@ include $(TOPDIR)/include/scan-build.mk
+ include $(TOPDIR)/include/fanalyzer.mk
+ 
+ TARGETS	= $(SHIMNAME)
+-TARGETS += $(SHIMNAME).debug $(MMNAME).debug $(if $(DISABLE_FALLBACK),,$(FBNAME).debug)
++TARGETS += $(SHIMNAME).debug $(if $(DISABLE_MOK),,$(MMNAME).debug) $(if $(DISABLE_FALLBACK),,$(FBNAME).debug)
+ ifneq ($(origin ENABLE_SHIM_HASH),undefined)
+ TARGETS += $(SHIMHASHNAME)
+ endif
+@@ -33,10 +33,10 @@ ifneq ($(origin ENABLE_SHIM_DEVEL),undefined)
+ CFLAGS += -DENABLE_SHIM_DEVEL
+ endif
+ ifneq ($(origin ENABLE_SHIM_CERT),undefined)
+-TARGETS	+= $(MMNAME).signed $(if $(DISABLE_FALLBACK),,$(FBNAME).signed)
++TARGETS	+= $(if $(DISABLE_MOK),,$(MMNAME).signed) $(if $(DISABLE_FALLBACK),,$(FBNAME).signed)
+ CFLAGS += -DENABLE_SHIM_CERT
+ else
+-TARGETS += $(MMNAME) $(if $(DISABLE_FALLBACK),,$(FBNAME))
++TARGETS += $(if $(DISABLE_MOK),,$(MMNAME)) $(if $(DISABLE_FALLBACK),,$(FBNAME))
+ endif
+ 
+ ifneq ($(origin DISABLE_FALLBACK),undefined)
+@@ -44,9 +44,14 @@ $(warning Building shim without fallback image support)
+ CFLAGS += -DDISABLE_FALLBACK
+ endif
+ 
+-OBJS	= shim.o globals.o memattrs.o mok.o netboot.o cert.o dp.o loader-proto.o tpm.o version.o errlog.o sbat.o sbat_data.o sbat_var.o pe.o pe-relocate.o httpboot.o csv.o load-options.o utils.o
++ifneq ($(origin DISABLE_MOK),undefined)
++$(warning Building shim without mok support)
++CFLAGS += -DDISABLE_MOK
++endif
++
++OBJS	= shim.o globals.o memattrs.o $(if $(DISABLE_MOK),,mok.o) netboot.o cert.o dp.o loader-proto.o tpm.o version.o errlog.o sbat.o sbat_data.o sbat_var.o pe.o pe-relocate.o httpboot.o csv.o load-options.o utils.o
+ KEYS	= shim_cert.h ocsp.* ca.* shim.crt shim.csr shim.p12 shim.pem shim.key shim.cer
+-ORIG_SOURCES	= shim.c globals.c memattrs.c mok.c netboot.c dp.c loader-proto.c tpm.c errlog.c sbat.c pe.c pe-relocate.c httpboot.c shim.h version.h $(wildcard include/*.h) cert.S sbat_var.S
++ORIG_SOURCES	= shim.c globals.c memattrs.c $(if $(DISABLE_MOK),,mok.c) netboot.c dp.c loader-proto.c tpm.c errlog.c sbat.c pe.c pe-relocate.c httpboot.c shim.h version.h $(wildcard include/*.h) cert.S sbat_var.S
+ MOK_OBJS = MokManager.o PasswordCrypt.o crypt_blowfish.o errlog.o sbat_data.o globals.o dp.o
+ ORIG_MOK_SOURCES = MokManager.c PasswordCrypt.c crypt_blowfish.c shim.h $(wildcard include/*.h)
+ FALLBACK_OBJS = fallback.o tpm.o errlog.o sbat_data.o globals.o utils.o
+diff --git a/shim.c b/shim.c
+index fae0421..c0aadb2 100644
+--- a/shim.c
++++ b/shim.c
+@@ -316,6 +316,7 @@ static EFI_STATUS check_denylist (WIN_CERTIFICATE_EFI_PKCS *cert,
+ 		LogError(L"cert sha256hash found in system dbx\n");
+ 		return EFI_SECURITY_VIOLATION;
+ 	}
++#ifndef DISABLE_MOK
+ 	if (check_db_hash(L"MokListX", SHIM_LOCK_GUID, sha256hash,
+ 			  SHA256_DIGEST_SIZE, EFI_CERT_SHA256_GUID) == DATA_FOUND) {
+ 		LogError(L"binary sha256hash found in Mok dbx\n");
+@@ -327,7 +328,7 @@ static EFI_STATUS check_denylist (WIN_CERTIFICATE_EFI_PKCS *cert,
+ 		LogError(L"cert sha256hash found in Mok dbx\n");
+ 		return EFI_SECURITY_VIOLATION;
+ 	}
+-
++#endif
+ 	drain_openssl_errors();
+ 	return EFI_SUCCESS;
+ }
+@@ -394,7 +395,7 @@ static EFI_STATUS check_allowlist (WIN_CERTIFICATE_EFI_PKCS *cert,
+ 		LogError(L"check_db_cert(vendor_db, sha256hash) != DATA_FOUND\n");
+ 	}
+ #endif
+-
++#ifndef DISABLE_MOK
+ 	if (check_db_hash(L"MokListRT", SHIM_LOCK_GUID, sha256hash,
+ 			  SHA256_DIGEST_SIZE, EFI_CERT_SHA256_GUID)
+ 				== DATA_FOUND) {
+@@ -412,7 +413,7 @@ static EFI_STATUS check_allowlist (WIN_CERTIFICATE_EFI_PKCS *cert,
+ 	} else if (cert) {
+ 		LogError(L"check_db_cert(MokListRT, sha256hash) != DATA_FOUND\n");
+ 	}
+-
++#endif
+ 	update_verification_method(VERIFIED_BY_NOTHING);
+ 	return EFI_NOT_FOUND;
+ }
+@@ -1219,6 +1220,7 @@ EFI_STATUS init_grub(EFI_HANDLE image_handle)
+ #endif
+ 
+ 	efi_status = start_image(image_handle, use_fb ? FALLBACK :second_stage);
++#ifndef DISABLE_MOK
+ 	if (efi_status == EFI_SECURITY_VIOLATION ||
+ 	    efi_status == EFI_ACCESS_DENIED) {
+ 		efi_status = start_image(image_handle, MOK_MANAGER);
+@@ -1231,7 +1233,7 @@ EFI_STATUS init_grub(EFI_HANDLE image_handle)
+ 		efi_status = start_image(image_handle,
+ 					 use_fb ? FALLBACK : second_stage);
+ 	}
+-
++#endif
+ 	/*
+ 	 * If the filename is invalid, or the file does not exist, just fall
+ 	 * back to the default loader.  Also fall back to the default loader
+@@ -2054,7 +2056,11 @@ efi_main (EFI_HANDLE passed_image_handle, EFI_SYSTEM_TABLE *passed_systab)
+ 	 * Before we do anything else, validate our non-volatile,
+ 	 * boot-services-only state variables are what we think they are.
+ 	 */
++#ifndef DISABLE_MOK
+ 	efi_status = import_mok_state(image_handle);
++#else
++	efi_status = EFI_SUCCESS;
++#endif
+ 	if (!secure_mode() &&
+ 	    (efi_status == EFI_INVALID_PARAMETER ||
+ 	     efi_status == EFI_OUT_OF_RESOURCES)) {
+-- 
+2.39.5
+

@@ -1,12 +1,23 @@
 # freeze version
 FROM debian:bookworm
 
-ARG VENDOR_CERT="zeetim-uefi-ca.der"
-ENV SHIM_VERSION=16.0
+ARG VENDOR_CERT
+ARG SHIM_VERSION
+ARG SHIM_BUILD_OPTIONS
+ARG SHIM_IMAGE="shimx64.efi"
 ENV BUILD_DIR="/build"
 ENV PATCHES_DIR="shim-patches"
 ENV DEBIAN_FRONTEND=noninteractive
-ARG OUTPUT_DIR=${BUILD_DIR}/output
+ENV REQUIRED_ARGS="VENDOR_CERT SHIM_VERSION"
+
+# Validate that all required arguments are set
+RUN for arg in $REQUIRED_ARGS; do \
+    eval "value=\$$arg"; \
+    if [ -z "$value" ]; then \
+        echo "Error: $arg build argument is required but not set."; \
+        exit 1; \
+    fi; \
+done
 
 RUN apt update -y
 RUN apt install tar bzip2 efitools wget gcc make binutils quilt -y
@@ -23,16 +34,14 @@ ADD ${VENDOR_CERT} .
 COPY ${PATCHES_DIR}/ patches/
 
 RUN echo shim.zeetim,1,Zeetim,shim,${SHIM_VERSION},mail:contact@zeetim.com >> data/sbat.csv
-RUN cat data/sbat.csv
 
 RUN quilt push -a
 
-RUN make VENDOR_CERT_FILE=${VENDOR_CERT} DISABLE_FALLBACK=1 DISABLE_MOK=1 POST_PROCESS_PE_FLAGS=-n MOK_POLICY=MOK_POLICY_REQUIRE_NX
+RUN make VENDOR_CERT_FILE=${VENDOR_CERT} ${SHIM_BUILD_OPTIONS}
 
-RUN mkdir -p ${OUTPUT_DIR}
-RUN cp shimx64.efi ${OUTPUT_DIR}/shimx64.efi
-WORKDIR ${OUTPUT_DIR}
+RUN cp shimx64.efi /${SHIM_IMAGE}
+WORKDIR /
 
-RUN objcopy --only-section .sbat -O binary shimx64.efi /dev/stdout
-RUN objdump -x shimx64.efi | grep -E 'SectionAlignment|DllCharacteristics'
-RUN sha256sum shimx64.efi
+RUN objcopy --only-section .sbat -O binary ${SHIM_IMAGE} /dev/stdout
+RUN objdump -x ${SHIM_IMAGE} | grep -E 'SectionAlignment|DllCharacteristics'
+RUN sha256sum ${SHIM_IMAGE}

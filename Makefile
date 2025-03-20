@@ -2,7 +2,7 @@ SHELL = /bin/bash
 CONTAINER := shim-review
 LOG_FILE := build.log
 SHIM_IMAGE := shimx64.efi
-VENDOR_CERT:= zeetim-uefi-ca.der
+VENDOR_CERT:= zeetim-uefi-ca.cer
 SHIM_VERSION := 16.0
 SHIM_BUILD_OPTIONS:= "DISABLE_FALLBACK=1 DISABLE_MOK=1 POST_PROCESS_PE_FLAGS=-n MOK_POLICY=MOK_POLICY_REQUIRE_NX"
 

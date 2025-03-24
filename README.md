@@ -101,25 +101,20 @@ like keyserver.ubuntu.com, and preferably have signatures that are reasonably
 well known in the Linux community.)
 
 *******************************************************************************
-### Were these binaries created from the 15.8 shim release tar?
-Please create your shim binaries starting with the 15.8 shim release tar file: https://github.com/rhboot/shim/releases/download/15.8/shim-15.8.tar.bz2
+### Were these binaries created from the 16.0 shim release tar?
+Please create your shim binaries starting with the 16.0 shim release tar file: https://github.com/rhboot/shim/releases/download/16.0/shim-16.0.tar.bz2
 
-This matches https://github.com/rhboot/shim/releases/tag/15.8 and contains the appropriate gnu-efi source.
+This matches https://github.com/rhboot/shim/releases/tag/16.0 and contains the appropriate gnu-efi source.
 
-Make sure the tarball is correct by verifying your download's checksum with the following ones:
-
-```
-a9452c2e6fafe4e1b87ab2e1cac9ec00  shim-15.8.tar.bz2
-cdec924ca437a4509dcb178396996ddf92c11183  shim-15.8.tar.bz2
-a79f0a9b89f3681ab384865b1a46ab3f79d88b11b4ca59aa040ab03fffae80a9  shim-15.8.tar.bz2
-30b3390ae935121ea6fe728d8f59d37ded7b918ad81bea06e213464298b4bdabbca881b30817965bd397facc596db1ad0b8462a84c87896ce6c1204b19371cd1  shim-15.8.tar.bz2
-```
-
-Make sure that you've verified that your build process uses that file as a source of truth (excluding external patches) and its checksum matches. Furthermore, there's [a detached signature as well](https://github.com/rhboot/shim/releases/download/15.8/shim-15.8.tar.bz2.asc) - check with the public key that has the fingerprint `8107B101A432AAC9FE8E547CA348D61BC2713E9F` that the tarball is authentic. Once you're sure, please confirm this here with a simple *yes*.
+**Note:** We are waiting for official checksum of shim 16.0 tarball.
 
 A short guide on verifying public keys and signatures should be available in the [docs](./docs/) directory.
 *******************************************************************************
-We are using shim 16.0
+We are using shim 16.0 from official `rhboot` Github repository.  
+Checksum of downloaded artifacts (locally computed): 
+```
+d503f778dc75895d3130da07e2ff23d2393862f95b6cd3d24b10cbd4af847217  shim-16.0.tar.bz2
+```
 
 *******************************************************************************
 ### URL for a repo that contains the exact code which was built to result in your binary:
@@ -389,7 +384,7 @@ No
 *******************************************************************************
 ### What kernel are you using? Which patches and configuration does it include to enforce Secure Boot?
 *******************************************************************************
-We are using latest stable version of the Linux kernel (6.13.8) without additional patches.
+We are using the latest longterm release of the Linux kernel (currently 6.12.20) without additional patches.
 
 *******************************************************************************
 ### What contributions have you made to help us review the applications of other applicants?

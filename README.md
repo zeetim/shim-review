@@ -26,10 +26,38 @@ Zeetim. We are a software company from France, building ZeeOS, a managed, Linux-
 https://zeetim.com
 
 *******************************************************************************
+### What's the legal data that proves the organization's genuineness?
+The reviewers should be able to easily verify, that your organization is a legal entity, to prevent abuse.
+Provide the information, which can prove the genuineness with certainty.
+*******************************************************************************
+Company/tax register entries or equivalent:  
+(a link to the organization entry in your jurisdiction's register will do)  
+
+We are a french company. Our DUNS (Data Universal Numbering System) is 263245068.
+
+The public details of both your organization and the issuer in the EV certificate used for signing .cab files at Microsoft Hardware Dev Center File Signing Services.  
+(**not** the CA certificate embedded in your shim binary)
+
+Example:
+
+```
+Issuer: O=MyIssuer, Ltd., CN=MyIssuer EV Code Signing CA
+Subject: C=XX, O=MyCompany, Inc., CN=MyCompany, Inc.
+```
+
+Serial Number: 0e:80:d1:94:45:43:43:78:0a:05:eb:0f
+Signature Algorithm: sha256WithRSAEncryption
+Issuer: C = BE, O = GlobalSign nv-sa, CN = GlobalSign GCC R45 EV CodeSigning CA 2020
+Validity
+  Not Before: Mar 28 13:01:27 2022 GMT
+  Not After : Mar 28 13:01:27 2025 GMT
+Subject: businessCategory = Private Organization, serialNumber = 533 155 909, jurisdictionC = FR, C = FR, ST = \C3\8Ele-de-France, L = Vitry-sur-Seine, street = 15 BIS RUE FR\C3\89D\C3\89RIC JOLIOT CURIE, O = ZEETIM SAS, CN = ZEETIM SAS
+
+
+*******************************************************************************
 ### What product or service is this for?
 *******************************************************************************
 ZeeOS is a lightweight Thin Client OS designed to replace the pre-existing OS on any device.
-
 
 *******************************************************************************
 ### What's the justification that this really does need to be signed for the whole world to be able to boot it?
@@ -90,7 +118,7 @@ Make sure that you've verified that your build process uses that file as a sourc
 
 A short guide on verifying public keys and signatures should be available in the [docs](./docs/) directory.
 *******************************************************************************
-Yes
+We are using shim 16.0
 
 *******************************************************************************
 ### URL for a repo that contains the exact code which was built to result in your binary:
@@ -104,15 +132,18 @@ https://github.com/zeetim/shim-review
 ### What patches are being applied and why:
 Mention all the external patches and build process modifications, which are used during your building process, that make your shim binary be the exact one that you posted as part of this application.
 *******************************************************************************
-We use a patch written by canonical to enforce NX flag in shim, mokmanager and fallback images.
+
+We use 3 patches:
+- The first one disable fallback mechanism: it removes fallback image from build process and disable fallback during secondary stage loading
+- The second one disable mok mechanism: shim do not load any mok variable anymore. Shim is just relying on db certificates, db hashes, and vendor certificate to verify second stage loader. It also removes mok manager image from the build process
+- The last one allows to set default mok molicy at build time: it allow to require nx policy from commandline.
 
 *******************************************************************************
 ### Do you have the NX bit set in your shim? If so, is your entire boot stack NX-compatible and what testing have you done to ensure such compatibility?
 
 See https://techcommunity.microsoft.com/t5/hardware-dev-center/nx-exception-for-shim-community/ba-p/3976522 for more details on the signing of shim without NX bit.
 *******************************************************************************
-Yes NX flag is set in our shim. We have used Canonical patches to enforce NX flag in both shim and grub. Linux kernel is already NX compatible.
-
+Yes NX flag is set in our shim. We have used Canonical patches to enforce NX flag in grub. Linux kernel is already NX compatible.
 *******************************************************************************
 ### What exact implementation of Secure Boot in GRUB2 do you have? (Either Upstream GRUB2 shim_lock verifier or Downstream RHEL/Fedora/Debian/Canonical-like implementation)
 Skip this, if you're not using GRUB2.
@@ -181,7 +212,7 @@ grub.zeetim,1,Zeetim,grub,2.12,mail:contact@zeetim.com
 ### Does your new chain of trust disallow booting old GRUB2 builds affected by the CVEs?
 If you had no previous signed shim, say so here. Otherwise a simple _yes_ will do.
 *******************************************************************************
-It is our first submission
+It is out second submission. Our fist submission did not get signed by Microsoft.
 
 *******************************************************************************
 ### If your boot chain of trust includes a Linux kernel:
@@ -194,21 +225,36 @@ If you are shipping an older kernel, double-check your sources; maybe you do not
 We are using upstream version of the Linux kernel
 
 *******************************************************************************
+### How does your signed kernel enforce lockdown when your system runs
+### with Secure Boot enabled?
+Hint: If it does not, we are not likely to sign your shim.
+*******************************************************************************
+We have set the following configuration in the Linux kernel:
+```conf
+CONFIG_SECURITY_LOCKDOWN_LSM=y 
+CONFIG_SECURITY_LOCKDOWN_LSM_EARLY=y
+CONFIG_LOCK_DOWN_KERNEL_FORCE_INTEGRITY=y
+
+CONFIG_MODULES=y
+CONFIG_MODULE_SIG_FORCE=y
+```
+
+*******************************************************************************
 ### Do you build your signed kernel with additional local patches? What do they do?
 *******************************************************************************
-No
+No we are using upstream version of Linux kernel
 
 *******************************************************************************
 ### Do you use an ephemeral key for signing kernel modules?
 ### If not, please describe how you ensure that one kernel build does not load modules built for another kernel.
 *******************************************************************************
-We use an ephemeral key to sign kernel modules
+Yes
 
 *******************************************************************************
 ### If you use vendor_db functionality of providing multiple certificates and/or hashes please briefly describe your certificate setup.
 ### If there are allow-listed hashes please provide exact binaries for which hashes are created via file sharing service, available in public with anonymous access for verification.
 *******************************************************************************
-We are not using vendor_db functionality
+We are not using vendor_db functionality.
 
 *******************************************************************************
 ### If you are re-using the CA certificate from your last shim binary, you will need to add the hashes of the previous GRUB2 binaries exposed to the CVEs mentioned earlier to vendor_dbx in shim. Please describe your strategy.
@@ -216,7 +262,7 @@ This ensures that your new shim+GRUB2 can no longer chainload those older GRUB2 
 
 If this is your first application or you're using a new CA certificate, please say so here.
 *******************************************************************************
-This is our first application
+Since our last submission did not get signed by Microsoft, we have reused the same CA certificate.
 
 *******************************************************************************
 ### Is the Dockerfile in your repository the recipe for reproducing the building of your shim binary?
@@ -226,13 +272,13 @@ Hint: Prefer using *frozen* packages for your toolchain, since an update to GCC,
 
 If your shim binaries can't be reproduced using the provided Dockerfile, please explain why that's the case, what the differences would be and what build environment (OS and toolchain) is being used to reproduce this build? In this case please write a detailed guide, how to setup this build environment from scratch.
 *******************************************************************************
-Our build is reproducible using "docker build" command
+Our build is reproducible using "docker build" command. We have also created a Makefile to pass build arguments to Docker. 
 
 *******************************************************************************
 ### Which files in this repo are the logs for your build?
 This should include logs for creating the buildroots, applying patches, doing the build, creating the archives, etc.
 *******************************************************************************
-`build.log` in the root of the repository
+`build.log` contains all build log.
 
 *******************************************************************************
 ### What changes were made in the distro's secure boot chain since your SHIM was last signed?
@@ -240,12 +286,12 @@ For example, signing new kernel's variants, UKI, systemd-boot, new certs, new CA
 
 Skip this, if this is your first application for having shim signed.
 *******************************************************************************
-It is our first application
+We have not changed anything in the secureboot chain since our last submission. We have only updated components to their latest stable version.
 
 *******************************************************************************
 ### What is the SHA256 hash of your final shim binary?
 *******************************************************************************
-`26cb646f44e7592bfce836206f2dc81f9aa80b7cdcbd1b440e5b2e49e4962a6f`
+b81f0565eba1f7039f880ab272cf7316b287a896a2712e2eb28dac39d833a3a6
 
 *******************************************************************************
 ### How do you manage and protect the keys used in your shim?
@@ -260,6 +306,15 @@ A _yes_ or _no_ will do. There's no penalty for the latter.
 No
 
 *******************************************************************************
+### Are you embedding a CA certificate in your shim?
+A _yes_ or _no_ will do. There's no penalty for the latter. However,
+if _yes_: does that certificate include the X509v3 Basic Constraints
+to say that it is a CA? See the [docs](./docs/) for more guidance
+about this.
+*******************************************************************************
+Yes
+
+*******************************************************************************
 ### Do you add a vendor-specific SBAT entry to the SBAT section in each binary that supports SBAT metadata ( GRUB2, fwupd, fwupdate, systemd-boot, systemd-stub, shim + all child shim binaries )?
 ### Please provide the exact SBAT entries for all binaries you are booting directly through shim.
 Hint: The history of SBAT and more information on how it works can be found [here](https://github.com/rhboot/shim/blob/main/SBAT.md). That document is large, so for just some examples check out [SBAT.example.md](https://github.com/rhboot/shim/blob/main/SBAT.example.md)
@@ -270,11 +325,13 @@ If you are using a downstream implementation of GRUB2 (e.g. from Fedora or Debia
 
 Hint: run `objcopy --only-section .sbat -O binary YOUR_EFI_BINARY /dev/stdout` to get these entries. Paste them here. Preferably surround each listing with three backticks (\`\`\`), so they render well.
 *******************************************************************************
+SBAT of GRUB2 binary:
 ```csv
 sbat,1,SBAT Version,sbat,1,https://github.com/rhboot/shim/blob/main/SBAT.md
 grub,4,Free Software Foundation,grub,2.12,https://www.gnu.org/software/grub/
 grub.zeetim,1,Zeetim,grub,2.12,mail:contact@zeetim.com
 ```
+__Note:__ We are closer to the upstream version of GRUB2 than the Canonical version since we are only using a small subset of their patches. That is why we have not included their SBAT entries
 
 *******************************************************************************
 ### If shim is loading GRUB2 bootloader, which modules are built into your signed GRUB2 image?
@@ -282,6 +339,7 @@ Skip this, if you're not using GRUB2.
 
 Hint: this is about those modules that are in the binary itself, not the `.mod` files in your filesystem.
 *******************************************************************************
+```
 part_msdos part_gpt part_msdos fat memdisk squash4 iso9660 cpio loopback
 keylayouts at_keyboard
 all_video gfxterm terminal
@@ -291,11 +349,12 @@ password_pbkdf2 pbkdf2
 efinet tftp http
 linux boot halt reboot minicmd sleep test gzio normal configfile
 peimage
+```
 
 *******************************************************************************
 ### If you are using systemd-boot on arm64 or riscv, is the fix for [unverified Devicetree Blob loading](https://github.com/systemd/systemd/security/advisories/GHSA-6m6p-rjcq-334c) included?
 *******************************************************************************
-We are using grub2 bootloader
+We are using GRUB2.
 
 *******************************************************************************
 ### What is the origin and full version number of your bootloader (GRUB2 or systemd-boot or other)?
@@ -307,18 +366,19 @@ We are using the lastest version: 2.12 .
 ### If your shim launches any other components apart from your bootloader, please provide further details on what is launched.
 Hint: The most common case here will be a firmware updater like fwupd.
 *******************************************************************************
-No
+We are only launching GRUB2.
 
 *******************************************************************************
 ### If your GRUB2 or systemd-boot launches any other binaries that are not the Linux kernel in SecureBoot mode, please provide further details on what is launched and how it enforces Secureboot lockdown.
 Skip this, if you're not using GRUB2 or systemd-boot.
 *******************************************************************************
-No
+GRUB2 only loads Linux kernel.
+
 *******************************************************************************
 ### How do the launched components prevent execution of unauthenticated code?
 Summarize in one or two sentences, how your secure bootchain works on higher level.
 *******************************************************************************
-shim verifies signature of grub, grub verifies signature of kernel. Grub also use a builtin GPG key that ensures that all grub configs and initrd cannot be modified. Kernel is compiled with CONFIG_LOCK_DOWN_KERNEL_FORCE_INTEGRITY, CONFIG_MODULE_SIG_FORCE, CONFIG_INTEGRITY_PLATFORM_KEYRING and CONFIG_INTEGRITY_MACHINE_KEYRING. Kernel modules are signed using ephemeral key.
+shim verifies signature of grub, grub verifies signature of kernel. Grub also use a builtin GPG key that ensures that all grub configs and initrd cannot be modified. Kernel modules are signed and verified against ephemeral key.
 
 *******************************************************************************
 ### Does your shim load any loaders that support loading unsigned kernels (e.g. certain GRUB2 configurations)?
@@ -328,7 +388,7 @@ No
 *******************************************************************************
 ### What kernel are you using? Which patches and configuration does it include to enforce Secure Boot?
 *******************************************************************************
-We are using latest stable version of the Linux kernel (6.10.7) without additional patches
+We are using latest stable version of the Linux kernel (6.13.8) without additional patches.
 
 *******************************************************************************
 ### What contributions have you made to help us review the applications of other applicants?
@@ -344,3 +404,4 @@ For newcomers, the applications labeled as [*easy to review*](https://github.com
 *******************************************************************************
 ### Add any additional information you think we may need to validate this shim signing application.
 *******************************************************************************
+Microsoft asks us to remove fallbak and mok addons from Shim. That is why we are using 2 additional patches since our last submission.

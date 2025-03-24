@@ -45,6 +45,7 @@ Issuer: O=MyIssuer, Ltd., CN=MyIssuer EV Code Signing CA
 Subject: C=XX, O=MyCompany, Inc., CN=MyCompany, Inc.
 ```
 
+```
 Serial Number: 0e:80:d1:94:45:43:43:78:0a:05:eb:0f
 Signature Algorithm: sha256WithRSAEncryption
 Issuer: C = BE, O = GlobalSign nv-sa, CN = GlobalSign GCC R45 EV CodeSigning CA 2020
@@ -52,7 +53,7 @@ Validity
   Not Before: Mar 28 13:01:27 2022 GMT
   Not After : Mar 28 13:01:27 2025 GMT
 Subject: businessCategory = Private Organization, serialNumber = 533 155 909, jurisdictionC = FR, C = FR, ST = \C3\8Ele-de-France, L = Vitry-sur-Seine, street = 15 BIS RUE FR\C3\89D\C3\89RIC JOLIOT CURIE, O = ZEETIM SAS, CN = ZEETIM SAS
-
+```
 
 *******************************************************************************
 ### What product or service is this for?
@@ -291,7 +292,7 @@ We have not changed anything in the secureboot chain since our last submission. 
 *******************************************************************************
 ### What is the SHA256 hash of your final shim binary?
 *******************************************************************************
-b81f0565eba1f7039f880ab272cf7316b287a896a2712e2eb28dac39d833a3a6
+`b81f0565eba1f7039f880ab272cf7316b287a896a2712e2eb28dac39d833a3a6`
 
 *******************************************************************************
 ### How do you manage and protect the keys used in your shim?
@@ -398,8 +399,8 @@ A reasonable timeframe of waiting for a review can reach 2-3 months. Helping us 
 
 For newcomers, the applications labeled as [*easy to review*](https://github.com/rhboot/shim-review/issues?q=is%3Aopen+is%3Aissue+label%3A%22easy+to+review%22) are recommended to start the contribution process.
 *******************************************************************************
-[ciqliq-shim-EL7-x64-ia32-20240705](https://github.com/rhboot/shim-review/issues/430#issuecomment-2326738460)
-[IGEL-shim-x64-20240807](https://github.com/rhboot/shim-review/issues/434#issuecomment-2329069279)
+- [ciqliq-shim-EL7-x64-ia32-20240705](https://github.com/rhboot/shim-review/issues/430#issuecomment-2326738460)
+- [IGEL-shim-x64-20240807](https://github.com/rhboot/shim-review/issues/434#issuecomment-2329069279)
 
 *******************************************************************************
 ### Add any additional information you think we may need to validate this shim signing application.

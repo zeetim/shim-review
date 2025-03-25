@@ -201,12 +201,7 @@ All of these CVEs are patched in upstream grub and shim
 Skip this, if you're not using GRUB2, otherwise do you have an entry in your GRUB2 binary similar to:  
 `grub,4,Free Software Foundation,grub,GRUB_UPSTREAM_VERSION,https://www.gnu.org/software/grub/`?
 *******************************************************************************
-Yes my grub SBAT looks like this:
-```csv
-sbat,1,SBAT Version,sbat,1,https://github.com/rhboot/shim/blob/main/SBAT.md
-grub,4,Free Software Foundation,grub,2.12,https://www.gnu.org/software/grub/
-grub.zeetim,1,Zeetim,grub,2.12,mail:contact@zeetim.com
-```
+Yes
 
 *******************************************************************************
 ### Were old shims hashes provided to Microsoft for verification and to be added to future DBX updates?
@@ -330,9 +325,10 @@ SBAT of GRUB2 binary:
 ```csv
 sbat,1,SBAT Version,sbat,1,https://github.com/rhboot/shim/blob/main/SBAT.md
 grub,4,Free Software Foundation,grub,2.12,https://www.gnu.org/software/grub/
+grub.peimage,2,Canonical,grub2,2.12-5ubuntu7,https://salsa.debian.org/grub-team/grub/-/blob/master/debian/patches/secure-boot/efi-use-peimage-shim.patch
 grub.zeetim,1,Zeetim,grub,2.12,mail:contact@zeetim.com
 ```
-__Note:__ We are closer to the upstream version of GRUB2 than the Canonical version since we are only using a small subset of their patches. That is why we have not included their SBAT entries
+__Note:__ We are closer to the upstream version of GRUB2 than the Canonical version since we are only using a small subset of their patches. That is why we have only included `grub.peimage` entry.
 
 *******************************************************************************
 ### If shim is loading GRUB2 bootloader, which modules are built into your signed GRUB2 image?

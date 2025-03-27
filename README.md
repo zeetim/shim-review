@@ -395,8 +395,10 @@ A reasonable timeframe of waiting for a review can reach 2-3 months. Helping us 
 
 For newcomers, the applications labeled as [*easy to review*](https://github.com/rhboot/shim-review/issues?q=is%3Aopen+is%3Aissue+label%3A%22easy+to+review%22) are recommended to start the contribution process.
 *******************************************************************************
-- [ciqliq-shim-EL7-x64-ia32-20240705](https://github.com/rhboot/shim-review/issues/430#issuecomment-2326738460)
-- [IGEL-shim-x64-20240807](https://github.com/rhboot/shim-review/issues/434#issuecomment-2329069279)
+- [Ctrl IQ, Inc EL7 Shim 15.8 for x64 & ia32](https://github.com/rhboot/shim-review/issues/430#issuecomment-2326738460)
+- [Shim 15.8 for IGEL OS (x86_64)](https://github.com/rhboot/shim-review/issues/434#issuecomment-2329069279)
+- [shim-16.0 for Isoo (20250321)](https://github.com/rhboot/shim-review/issues/463#issuecomment-2751780558)
+- [shim-16.0 for opsi](https://github.com/rhboot/shim-review/issues/466#issuecomment-2757625785)
 
 *******************************************************************************
 ### Add any additional information you think we may need to validate this shim signing application.

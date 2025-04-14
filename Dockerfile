@@ -1,26 +1,16 @@
-# freeze version
-FROM debian:bookworm
+FROM debian:bookworm-20250407-slim
 
-ARG VENDOR_CERT
-ARG SHIM_VERSION
-ARG SHIM_BUILD_OPTIONS
+ARG SHIM_VERSION="16.0"
+ARG SHIM_REVIEW_TAG="zeetim-shim-x64-2025-04-14"
+ARG SHIM_BUILD_OPTIONS="DISABLE_FALLBACK=1 DISABLE_MOK=1 POST_PROCESS_PE_FLAGS=-n MOK_POLICY=MOK_POLICY_REQUIRE_NX"
 ARG SHIM_IMAGE="shimx64.efi"
 ENV BUILD_DIR="/build"
-ENV PATCHES_DIR="shim-patches"
-ENV DEBIAN_FRONTEND=noninteractive
-ENV REQUIRED_ARGS="VENDOR_CERT SHIM_VERSION"
+ENV SHIM_REVIEW="https://github.com/zeetim/shim-review.git"
 
-# Validate that all required arguments are set
-RUN for arg in $REQUIRED_ARGS; do \
-    eval "value=\$$arg"; \
-    if [ -z "$value" ]; then \
-        echo "Error: $arg build argument is required but not set."; \
-        exit 1; \
-    fi; \
-done
+ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt update -y
-RUN apt install tar bzip2 efitools wget gcc make binutils quilt -y
+RUN apt install tar bzip2 wget gcc make binutils quilt git -y
 
 RUN mkdir -p ${BUILD_DIR}
 WORKDIR ${BUILD_DIR}
@@ -28,16 +18,15 @@ WORKDIR ${BUILD_DIR}
 RUN wget https://github.com/rhboot/shim/releases/download/${SHIM_VERSION}/shim-${SHIM_VERSION}.tar.bz2
 RUN tar xf shim-${SHIM_VERSION}.tar.bz2
 
-WORKDIR ${BUILD_DIR}/shim-${SHIM_VERSION}
+RUN git clone ${SHIM_REVIEW} --branch ${SHIM_REVIEW_TAG} shim-review
 
-ADD ${VENDOR_CERT} .
-COPY ${PATCHES_DIR}/ patches/
+WORKDIR ${BUILD_DIR}/shim-${SHIM_VERSION}
 
 RUN echo shim.zeetim,1,Zeetim,shim,${SHIM_VERSION},mail:contact@zeetim.com >> data/sbat.csv
 
-RUN quilt push -a
+RUN QUILT_PATCHES=../shim-review/shim-patches quilt push -a
 
-RUN make VENDOR_CERT_FILE=${VENDOR_CERT} ${SHIM_BUILD_OPTIONS}
+RUN make VENDOR_CERT_FILE=../shim-review/zeetim-uefi-ca.cer ${SHIM_BUILD_OPTIONS}
 
 RUN cp shimx64.efi /${SHIM_IMAGE}
 WORKDIR /

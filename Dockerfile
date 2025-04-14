@@ -3,7 +3,7 @@ FROM debian:bookworm-20250407-slim
 ARG SHIM_VERSION="16.0"
 ARG SHIM_REVIEW_TAG="zeetim-shim-x64-2025-04-14"
 ARG SHIM_BUILD_OPTIONS="DISABLE_FALLBACK=1 DISABLE_MOK=1 POST_PROCESS_PE_FLAGS=-n MOK_POLICY=MOK_POLICY_REQUIRE_NX"
-ARG SHIM_IMAGE="shimx64.efi"
+ENV SHIM_IMAGE="shimx64.efi"
 ENV BUILD_DIR="/build"
 ENV SHIM_REVIEW="https://github.com/zeetim/shim-review.git"
 
@@ -28,8 +28,8 @@ RUN QUILT_PATCHES=../shim-review/shim-patches quilt push -a
 
 RUN make VENDOR_CERT_FILE=../shim-review/zeetim-uefi-ca.cer ${SHIM_BUILD_OPTIONS}
 
-RUN cp shimx64.efi /${SHIM_IMAGE}
-WORKDIR /
+RUN cp shimx64.efi ${BUILD_DIR}/${SHIM_IMAGE}
+WORKDIR ${BUILD_DIR}
 
 RUN objcopy --only-section .sbat -O binary ${SHIM_IMAGE} /dev/stdout
 RUN objdump -x ${SHIM_IMAGE} | grep -E 'SectionAlignment|DllCharacteristics'

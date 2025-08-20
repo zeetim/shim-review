@@ -101,21 +101,33 @@ like keyserver.ubuntu.com, and preferably have signatures that are reasonably
 well known in the Linux community.)
 
 *******************************************************************************
-### Were these binaries created from the 16.0 shim release tar?
-Please create your shim binaries starting with the 16.0 shim release tar file: https://github.com/rhboot/shim/releases/download/16.0/shim-16.0.tar.bz2
+### Were these binaries created from the 16.1 shim release tar?
+Please create your shim binaries starting with the 16.1 shim release tar file: https://github.com/rhboot/shim/releases/download/16.1/shim-16.1.tar.bz2
 
-This matches https://github.com/rhboot/shim/releases/tag/16.0 and contains the appropriate gnu-efi source.
+This matches https://github.com/rhboot/shim/releases/tag/16.1 and contains the appropriate gnu-efi source.
 
 Make sure the tarball is correct by verifying your download's checksum with the following ones:
 
 ```
-7b518edd63eb840081912f095ed1487a  shim-16.0.tar.bz2
-c2453b9b3c02bc01eea248e9cf634a179ff8828c  shim-16.0.tar.bz2
-d503f778dc75895d3130da07e2ff23d2393862f95b6cd3d24b10cbd4af847217  shim-16.0.tar.bz2
-b4367f3b1e0716d093f4230902e392d3228bd346e2e07a9377c498d8b3b08a5c0ad25c31aa03af66f54648618074a29b55a3e51925e5cfe5c7ac97257bd25880  shim-16.0.tar.bz2
+46319cd228d8f2c06c744241c0f342412329a7c630436fce7f82cf6936b1d603  shim-16.1.tar.bz2
+ca5f80e82f3b80b622028f03ef23105c98ee1b6a25f52a59c823080a3202dd4b9962266489296e99f955eb92e36ce13e0b1d57f688350006bba45f2718f159fb  shim-16.1.tar.bz2
 ```
 
-Make sure that you've verified that your build process uses that file as a source of truth (excluding external patches) and its checksum matches. Furthermore, there's [a detached signature as well](https://github.com/rhboot/shim/releases/download/16.0/shim-16.0.tar.bz2.asc) - check with the public key that has the fingerprint `8107B101A432AAC9FE8E547CA348D61BC2713E9F` that the tarball is authentic. Once you're sure, please confirm this here with a simple *yes*.
+Make sure that you've verified that your build process uses that file
+as a source of truth (excluding external patches) and its checksum
+matches. You can also further validate the release by checking the PGP
+signature: there's [a detached
+signature](https://github.com/rhboot/shim/releases/download/16.1/shim-16.1.tar.bz2.asc)
+
+The release is signed by the maintainer Peter Jones - his master key
+has the fingerprint `B00B48BC731AA8840FED9FB0EED266B70F4FEF10` and the
+signing sub-key in the signature here has the fingerprint
+`02093E0D19DDE0F7DFFBB53C1FD3F540256A1372`. A copy of his public key
+is included here for reference:
+[pjones.asc](https://github.com/rhboot/shim-review/blob/main/pjones.asc)
+
+Once you're sure that the tarball you are using is correct and
+authentic, please confirm this here with a simple *yes*.
 
 A short guide on verifying public keys and signatures should be available in the [docs](./docs/) directory.
 *******************************************************************************
@@ -287,7 +299,7 @@ We have not changed anything in the secureboot chain since our last submission. 
 *******************************************************************************
 ### What is the SHA256 hash of your final shim binary?
 *******************************************************************************
-`b81f0565eba1f7039f880ab272cf7316b287a896a2712e2eb28dac39d833a3a6`
+`7debcf601323c9d05bf31499abeee89f124f6f4ec4f548c08218db2766496e30`
 
 *******************************************************************************
 ### How do you manage and protect the keys used in your shim?

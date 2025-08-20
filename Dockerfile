@@ -1,7 +1,8 @@
-FROM debian:bookworm-20250407-slim
+FROM debian:trixie-slim
 
 ARG SHIM_VERSION="16.1"
-ARG SHIM_REVIEW_TAG="master"
+ARG SHIM_SHA256_CHECKSUM="46319cd228d8f2c06c744241c0f342412329a7c630436fce7f82cf6936b1d603"
+ARG SHIM_REVIEW_TAG="zeetim-shim-x64-2025-08-20"
 ARG SHIM_BUILD_OPTIONS="DISABLE_FALLBACK=1 DISABLE_MOK=1 POST_PROCESS_PE_FLAGS=-n MOK_POLICY=MOK_POLICY_REQUIRE_NX"
 ENV SHIM_IMAGE="shimx64.efi"
 ENV BUILD_DIR="/build"
@@ -16,6 +17,7 @@ RUN mkdir -p ${BUILD_DIR}
 WORKDIR ${BUILD_DIR}
 
 RUN wget https://github.com/rhboot/shim/releases/download/${SHIM_VERSION}/shim-${SHIM_VERSION}.tar.bz2
+RUN echo "${SHIM_SHA256_CHECKSUM}  shim-${SHIM_VERSION}.tar.bz2" | sha256sum -c -
 RUN tar xf shim-${SHIM_VERSION}.tar.bz2
 
 RUN git clone ${SHIM_REVIEW} --branch ${SHIM_REVIEW_TAG} shim-review

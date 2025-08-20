@@ -1,20 +1,20 @@
-From b43e2d7b11646d047a2d504bf3790900589aa7e3 Mon Sep 17 00:00:00 2001
-From: zeetim <support@zeetim.com>
-Date: Tue, 11 Mar 2025 14:48:23 +0100
+From a776436a51aafffbf945f727c56cbba5798cb05b Mon Sep 17 00:00:00 2001
+From: Guillaume Chaye <guillaume.chaye@zeetim.com>
+Date: Wed, 20 Aug 2025 11:39:03 +0200
 Subject: [PATCH] Makefile: Add MOK_POLICY variable to build options to change
  default policy value.
 
-Signed-off-by: zeetim <support@zeetim.com>
+Signed-off-by: Guillaume Chaye <guillaume.chaye@zeetim.com>
 ---
  Makefile  | 5 +++++
  globals.c | 4 ++++
  2 files changed, 9 insertions(+)
 
 diff --git a/Makefile b/Makefile
-index daf8114..03941b6 100644
+index 9a39cd1..3d2272d 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -80,6 +80,11 @@ ifneq ($(origin FALLBACK_VERBOSE_WAIT), undefined)
+@@ -69,6 +69,11 @@ ifneq ($(origin FALLBACK_VERBOSE_WAIT), undefined)
  	CFLAGS += -DFALLBACK_VERBOSE_WAIT=$(FALLBACK_VERBOSE_WAIT)
  endif
  
@@ -43,5 +43,5 @@ index 1119712..436bcce 100644
  UINT32 verbose = 0;
  
 -- 
-2.39.5
+2.47.2
 

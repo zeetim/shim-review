@@ -1,20 +1,16 @@
-From 727786d0f5ae8a4f0b761f641c701c1d5698d97f Mon Sep 17 00:00:00 2001
-From: zeetim <support@zeetim.com>
-Date: Fri, 7 Mar 2025 16:38:32 +0100
+From 88fbaf63d437e476e50566e3dfb4af447e4a4d96 Mon Sep 17 00:00:00 2001
+From: Guillaume Chaye <guillaume.chaye@zeetim.com>
+Date: Wed, 20 Aug 2025 12:59:28 +0200
 Subject: [PATCH] Add an option to disable fallback image
 
-It allows to use shim without fallback mechanism.
-BOOT.CSV can cause security issues because user can manipulate its content.
-So get rid of fallback image is one solution.
-
-Signed-off-by: zeetim <support@zeetim.com>
+Signed-off-by: Guillaume Chaye <guillaume.chaye@zeetim.com>
 ---
- Makefile | 12 +++++++++---
+ Makefile | 11 ++++++++---
  shim.c   |  6 ++++++
- 2 files changed, 15 insertions(+), 3 deletions(-)
+ 2 files changed, 14 insertions(+), 3 deletions(-)
 
 diff --git a/Makefile b/Makefile
-index 4412a5e..76e4fc3 100644
+index 3d2272d..34d7268 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -25,7 +25,7 @@ include $(TOPDIR)/include/scan-build.mk
@@ -26,7 +22,7 @@ index 4412a5e..76e4fc3 100644
  ifneq ($(origin ENABLE_SHIM_HASH),undefined)
  TARGETS += $(SHIMHASHNAME)
  endif
-@@ -33,11 +33,17 @@ ifneq ($(origin ENABLE_SHIM_DEVEL),undefined)
+@@ -33,10 +33,10 @@ ifneq ($(origin ENABLE_SHIM_DEVEL),undefined)
  CFLAGS += -DENABLE_SHIM_DEVEL
  endif
  ifneq ($(origin ENABLE_SHIM_CERT),undefined)
@@ -37,28 +33,33 @@ index 4412a5e..76e4fc3 100644
 -TARGETS += $(MMNAME) $(FBNAME)
 +TARGETS += $(MMNAME) $(if $(DISABLE_FALLBACK),,$(FBNAME))
  endif
-+
+ OBJS	= shim.o globals.o memattrs.o mok.o netboot.o cert.o dp.o loader-proto.o tpm.o version.o errlog.o sbat.o sbat_data.o sbat_var.o pe.o pe-relocate.o httpboot.o csv.o load-options.o utils.o verify.o
+ KEYS	= shim_cert.h ocsp.* ca.* shim.crt shim.csr shim.p12 shim.pem shim.key shim.cer
+@@ -57,6 +57,11 @@ SOURCES = $(foreach source,$(ORIG_SOURCES),$(TOPDIR)/$(source)) version.c
+ MOK_SOURCES = $(foreach source,$(ORIG_MOK_SOURCES),$(TOPDIR)/$(source))
+ FALLBACK_SRCS = $(foreach source,$(ORIG_FALLBACK_SRCS),$(TOPDIR)/$(source))
+ 
 +ifneq ($(origin DISABLE_FALLBACK),undefined)
 +$(warning Building shim without fallback image support)
 +CFLAGS += -DDISABLE_FALLBACK
 +endif
 +
- OBJS	= shim.o globals.o memattrs.o mok.o netboot.o cert.o dp.o loader-proto.o tpm.o version.o errlog.o sbat.o sbat_data.o sbat_var.o pe.o pe-relocate.o httpboot.o csv.o load-options.o utils.o
- KEYS	= shim_cert.h ocsp.* ca.* shim.crt shim.csr shim.p12 shim.pem shim.key shim.cer
- ORIG_SOURCES	= shim.c globals.c memattrs.c mok.c netboot.c dp.c loader-proto.c tpm.c errlog.c sbat.c pe.c pe-relocate.c httpboot.c shim.h version.h $(wildcard include/*.h) cert.S sbat_var.S
+ ifneq ($(origin FALLBACK_VERBOSE), undefined)
+ 	CFLAGS += -DFALLBACK_VERBOSE
+ endif
 diff --git a/shim.c b/shim.c
-index 8b933d7..fae0421 100644
+index b62042e..48eeccb 100644
 --- a/shim.c
 +++ b/shim.c
-@@ -778,6 +778,7 @@ verify_buffer (char *data, int datasize,
- 	return verify_buffer_sbat(data, datasize, context);
+@@ -79,6 +79,7 @@ BOOLEAN secure_mode (void)
+ 	return TRUE;
  }
  
 +#ifndef DISABLE_FALLBACK
  static int
  should_use_fallback(EFI_HANDLE image_handle)
  {
-@@ -834,6 +835,7 @@ error:
+@@ -135,6 +136,7 @@ error:
  
  	return ret;
  }
@@ -66,7 +67,7 @@ index 8b933d7..fae0421 100644
  /*
   * Open the second stage bootloader and read it into a buffer
   */
-@@ -1210,7 +1212,11 @@ done:
+@@ -436,7 +438,11 @@ done:
  EFI_STATUS init_grub(EFI_HANDLE image_handle)
  {
  	EFI_STATUS efi_status;
@@ -79,5 +80,5 @@ index 8b933d7..fae0421 100644
  	efi_status = start_image(image_handle, use_fb ? FALLBACK :second_stage);
  	if (efi_status == EFI_SECURITY_VIOLATION ||
 -- 
-2.39.5
+2.47.2
 
